@@ -24,7 +24,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import co.touchlab.crashkios.bugsnag.BugsnagKotlin
 import com.bugsnag.android.Bugsnag
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.refresh.LastUpdatedAt
 import java.lang.Exception
 import java.time.Duration
@@ -33,7 +33,7 @@ import kotlinx.coroutines.CancellationException
 class FeedsRefreshWorker(
   context: Context,
   workerParameters: WorkerParameters,
-  private val rssRepository: RssRepository,
+  private val feedRepository: FeedRepository,
   private val lastUpdatedAt: LastUpdatedAt
 ) : CoroutineWorker(context, workerParameters) {
 
@@ -57,7 +57,7 @@ class FeedsRefreshWorker(
   override suspend fun doWork(): Result {
     return if (lastUpdatedAt.hasExpired()) {
       try {
-        rssRepository.updateFeeds()
+        feedRepository.updateFeeds()
         lastUpdatedAt.refresh()
         Result.success()
       } catch (e: CancellationException) {

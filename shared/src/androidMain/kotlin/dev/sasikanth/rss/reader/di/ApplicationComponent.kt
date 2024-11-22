@@ -20,7 +20,7 @@ import android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE
 import android.os.Build
 import dev.sasikanth.rss.reader.app.AppInfo
 import dev.sasikanth.rss.reader.core.network.post.FullArticleFetcher
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.di.scopes.AppScope
 import me.tatarka.inject.annotations.Component
@@ -31,7 +31,7 @@ import me.tatarka.inject.annotations.Provides
 abstract class ApplicationComponent(@get:Provides val context: Context) :
   SharedApplicationComponent() {
 
-  abstract val rssRepository: RssRepository
+  abstract val feedRepository: FeedRepository
 
   abstract val settingsRepository: SettingsRepository
 

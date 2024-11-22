@@ -28,7 +28,7 @@ import com.arkivanov.essenty.instancekeeper.InstanceKeeper
 import com.arkivanov.essenty.instancekeeper.getOrCreate
 import dev.sasikanth.rss.reader.core.model.local.PostWithMetadata
 import dev.sasikanth.rss.reader.core.model.local.SearchSortOrder
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
@@ -60,18 +60,18 @@ internal typealias SearchPresentFactory =
 
 @Inject
 class SearchPresenter(
-  rssRepository: RssRepository,
-  dispatchersProvider: DispatchersProvider,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val goBack: () -> Unit,
-  @Assisted private val openPost: (post: PostWithMetadata) -> Unit,
+    feedRepository: FeedRepository,
+    dispatchersProvider: DispatchersProvider,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val goBack: () -> Unit,
+    @Assisted private val openPost: (post: PostWithMetadata) -> Unit,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
       )
     }
 
@@ -98,7 +98,7 @@ class SearchPresenter(
   @OptIn(FlowPreview::class)
   private class PresenterInstance(
     dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository
+    private val feedRepository: FeedRepository
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -160,12 +160,12 @@ class SearchPresenter(
     }
 
     private fun togglePostReadStatus(postId: String, postRead: Boolean) {
-      coroutineScope.launch { rssRepository.updatePostReadStatus(read = !postRead, id = postId) }
+      coroutineScope.launch { feedRepository.updatePostReadStatus(read = !postRead, id = postId) }
     }
 
     private fun onPostBookmarkClick(post: PostWithMetadata) {
       coroutineScope.launch {
-        rssRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
+        feedRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
       }
     }
 
@@ -176,7 +176,7 @@ class SearchPresenter(
     private fun searchPosts(query: String, sortOrder: SearchSortOrder) {
       val searchResults =
         createPager(config = createPagingConfig(pageSize = 20)) {
-            rssRepository.search(query, sortOrder)
+            feedRepository.search(query, sortOrder)
           }
           .flow
           .cachedIn(coroutineScope)

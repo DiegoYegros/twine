@@ -58,7 +58,7 @@ class ReaderApplication : Application(), Configuration.Provider {
                   FeedsRefreshWorker(
                     context = appContext,
                     workerParameters = workerParameters,
-                    rssRepository = appComponent.rssRepository,
+                    feedRepository = appComponent.feedRepository,
                     lastUpdatedAt = appComponent.lastUpdatedAt
                   )
                 }
@@ -66,7 +66,7 @@ class ReaderApplication : Application(), Configuration.Provider {
                   PostsCleanUpWorker(
                     context = appContext,
                     workerParameters = workerParameters,
-                    rssRepository = appComponent.rssRepository,
+                    feedRepository = appComponent.feedRepository,
                     settingsRepository = appComponent.settingsRepository
                   )
                 }

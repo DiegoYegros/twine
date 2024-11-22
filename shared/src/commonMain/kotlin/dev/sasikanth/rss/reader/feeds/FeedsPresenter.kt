@@ -38,7 +38,7 @@ import dev.sasikanth.rss.reader.core.model.local.Source
 import dev.sasikanth.rss.reader.core.model.local.SourceType
 import dev.sasikanth.rss.reader.data.repository.FeedsOrderBy
 import dev.sasikanth.rss.reader.data.repository.ObservableActiveSource
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import dev.sasikanth.rss.reader.utils.Constants.MINIMUM_REQUIRED_SEARCH_CHARACTERS
@@ -74,22 +74,22 @@ import me.tatarka.inject.annotations.Inject
 
 @Inject
 class FeedsPresenter(
-  dispatchersProvider: DispatchersProvider,
-  private val rssRepository: RssRepository,
-  private val settingsRepository: SettingsRepository,
-  private val observableActiveSource: ObservableActiveSource,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val openGroupSelectionSheet: () -> Unit,
-  @Assisted private val openFeedInfoSheet: (feedId: String) -> Unit,
-  @Assisted private val openAddFeedScreen: () -> Unit,
-  @Assisted private val openGroupScreen: (groupId: String) -> Unit,
+    dispatchersProvider: DispatchersProvider,
+    private val feedRepository: FeedRepository,
+    private val settingsRepository: SettingsRepository,
+    private val observableActiveSource: ObservableActiveSource,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val openGroupSelectionSheet: () -> Unit,
+    @Assisted private val openFeedInfoSheet: (feedId: String) -> Unit,
+    @Assisted private val openAddFeedScreen: () -> Unit,
+    @Assisted private val openGroupScreen: (groupId: String) -> Unit,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         settingsRepository = settingsRepository,
         observableActiveSource = observableActiveSource
       )
@@ -128,10 +128,10 @@ class FeedsPresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
-    private val settingsRepository: SettingsRepository,
-    private val observableActiveSource: ObservableActiveSource
+      private val dispatchersProvider: DispatchersProvider,
+      private val feedRepository: FeedRepository,
+      private val settingsRepository: SettingsRepository,
+      private val observableActiveSource: ObservableActiveSource
   ) : InstanceKeeper.Instance {
 
     var searchQuery by mutableStateOf(TextFieldValue())
@@ -189,7 +189,7 @@ class FeedsPresenter(
     private fun onPinnedSourcePositionChanged(newSourcesList: List<Source>) {
       coroutineScope.launch {
         _state.update { it.copy(pinnedSources = newSourcesList) }
-        rssRepository.updatedSourcePinnedPosition(_state.value.pinnedSources)
+        feedRepository.updatedSourcePinnedPosition(_state.value.pinnedSources)
       }
     }
 
@@ -199,7 +199,7 @@ class FeedsPresenter(
 
     private fun deleteSelectedSources() {
       coroutineScope
-        .launch { rssRepository.deleteSources(_state.value.selectedSources) }
+        .launch { feedRepository.deleteSources(_state.value.selectedSources) }
         .invokeOnCompletion {
           if (_state.value.selectedSources.any { it.id == _state.value.activeSource?.id }) {
             observableActiveSource.clearSelection()
@@ -210,7 +210,7 @@ class FeedsPresenter(
 
     private fun onGroupsSelected(groupIds: Set<String>) {
       coroutineScope.launch {
-        rssRepository.addFeedIdsToGroups(
+        feedRepository.addFeedIdsToGroups(
           groupIds = groupIds,
           feedIds = _state.value.selectedSources.map { it.id }
         )
@@ -219,7 +219,7 @@ class FeedsPresenter(
     }
 
     private fun onCreateGroup(name: String) {
-      coroutineScope.launch { rssRepository.createGroup(name) }
+      coroutineScope.launch { feedRepository.createGroup(name) }
     }
 
     private fun onSourceClicked(source: Source) {
@@ -235,13 +235,13 @@ class FeedsPresenter(
 
     private fun onUnpinSelectedSources() {
       coroutineScope
-        .launch { rssRepository.unpinSources(_state.value.selectedSources) }
+        .launch { feedRepository.unpinSources(_state.value.selectedSources) }
         .invokeOnCompletion { dispatch(FeedsEvent.CancelSourcesSelection) }
     }
 
     private fun onPinSelectedSources() {
       coroutineScope
-        .launch { rssRepository.pinSources(_state.value.selectedSources) }
+        .launch { feedRepository.pinSources(_state.value.selectedSources) }
         .invokeOnCompletion { dispatch(FeedsEvent.CancelSourcesSelection) }
     }
 
@@ -292,16 +292,16 @@ class FeedsPresenter(
     }
 
     private fun onFeedPinClicked(feed: Feed) {
-      coroutineScope.launch { rssRepository.toggleFeedPinStatus(feed) }
+      coroutineScope.launch { feedRepository.toggleFeedPinStatus(feed) }
     }
 
     private fun onFeedNameUpdated(newFeedName: String, feedId: String) {
-      coroutineScope.launch { rssRepository.updateFeedName(newFeedName, feedId) }
+      coroutineScope.launch { feedRepository.updateFeedName(newFeedName, feedId) }
     }
 
     private fun onDeleteFeed(feed: Feed) {
       coroutineScope.launch {
-        rssRepository.removeFeed(feed.id)
+        feedRepository.removeFeed(feed.id)
         if (_state.value.activeSource?.id == feed.id) {
           observableActiveSource.clearSelection()
         }
@@ -372,7 +372,7 @@ class FeedsPresenter(
         .onEach { activeSource -> _state.update { it.copy(activeSource = activeSource) } }
         .launchIn(coroutineScope)
 
-      combine(rssRepository.numberOfFeeds(), rssRepository.numberOfFeedGroups()) {
+      combine(feedRepository.numberOfFeeds(), feedRepository.numberOfFeedGroups()) {
           numberOfFeeds,
           numberOfFeedGroups ->
           numberOfFeeds to numberOfFeedGroups
@@ -390,7 +390,7 @@ class FeedsPresenter(
       val pinnedSourcesFlow =
         settingsRepository.postsType.flatMapLatest { postsType ->
           val postsAfter = postsAfterInstantFromPostsType(postsType)
-          rssRepository.pinnedSources(postsAfter)
+          feedRepository.pinnedSources(postsAfter)
         }
 
       val allSourcesFlow =
@@ -426,13 +426,13 @@ class FeedsPresenter(
 
     private fun feedsSearchResultsPager(transformedSearchQuery: String, postsAfter: Instant) =
       createPager(config = createPagingConfig(pageSize = 20)) {
-          rssRepository.searchFeed(searchQuery = transformedSearchQuery, postsAfter = postsAfter)
+          feedRepository.searchFeed(searchQuery = transformedSearchQuery, postsAfter = postsAfter)
         }
         .flow
 
     private fun sources(postsAfter: Instant, feedsSortOrder: FeedsOrderBy) =
       createPager(config = createPagingConfig(pageSize = 20)) {
-          rssRepository.sources(postsAfter = postsAfter, orderBy = feedsSortOrder)
+          feedRepository.sources(postsAfter = postsAfter, orderBy = feedsSortOrder)
         }
         .flow
 

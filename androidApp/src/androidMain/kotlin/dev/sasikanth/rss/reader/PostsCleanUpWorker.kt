@@ -25,7 +25,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import co.touchlab.crashkios.bugsnag.BugsnagKotlin
 import com.bugsnag.android.Bugsnag
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.utils.calculateInstantBeforePeriod
 import java.time.Duration
@@ -34,7 +34,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class PostsCleanUpWorker(
   context: Context,
   workerParameters: WorkerParameters,
-  private val rssRepository: RssRepository,
+  private val feedRepository: FeedRepository,
   private val settingsRepository: SettingsRepository
 ) : CoroutineWorker(context, workerParameters) {
 
@@ -59,10 +59,10 @@ class PostsCleanUpWorker(
     try {
       val postsDeletionPeriod = settingsRepository.postsDeletionPeriodImmediate()
       val feedsDeletedFrom =
-        rssRepository.deleteReadPosts(before = postsDeletionPeriod.calculateInstantBeforePeriod())
+        feedRepository.deleteReadPosts(before = postsDeletionPeriod.calculateInstantBeforePeriod())
 
       if (feedsDeletedFrom.isNotEmpty()) {
-        rssRepository.updateFeedsLastCleanUpAt(feedsDeletedFrom)
+        feedRepository.updateFeedsLastCleanUpAt(feedsDeletedFrom)
       }
       return Result.success()
     } catch (e: CancellationException) {
