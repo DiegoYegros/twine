@@ -16,7 +16,7 @@
 package dev.sasikanth.rss.reader.di
 
 import dev.sasikanth.rss.reader.app.AppInfo
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.di.scopes.AppScope
 import kotlin.experimental.ExperimentalNativeApi
@@ -35,7 +35,7 @@ abstract class ApplicationComponent(
   @get:Provides val uiViewControllerProvider: () -> UIViewController,
 ) : SharedApplicationComponent() {
 
-  abstract val rssRepository: RssRepository
+  abstract val feedRepository: FeedRepository
 
   abstract val settingsRepository: SettingsRepository
 

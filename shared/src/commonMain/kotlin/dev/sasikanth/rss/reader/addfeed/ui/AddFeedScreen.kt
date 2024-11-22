@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredSizeIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -44,11 +46,14 @@ import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.twotone.FolderOpen
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +71,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -87,11 +93,17 @@ import dev.sasikanth.rss.reader.addfeed.AddFeedPresenter
 import dev.sasikanth.rss.reader.addfeed.FeedFetchingState
 import dev.sasikanth.rss.reader.components.Button
 import dev.sasikanth.rss.reader.resources.icons.ArrowBack
+import dev.sasikanth.rss.reader.resources.icons.Nostr
 import dev.sasikanth.rss.reader.resources.icons.TwineIcons
 import dev.sasikanth.rss.reader.resources.strings.LocalStrings
 import dev.sasikanth.rss.reader.resources.strings.TwineStrings
 import dev.sasikanth.rss.reader.ui.AppTheme
 import kotlinx.coroutines.flow.collectLatest
+
+private enum class FeedType {
+  RSS,
+  NOSTR
+}
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -99,11 +111,13 @@ fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
   val state by presenter.state.collectAsState()
   val strings = LocalStrings.current
   val snackbarHostState = remember { SnackbarHostState() }
-  val (feedLinkFocus, feedTitleFocus) = remember { FocusRequester.createRefs() }
+  val (feedInputFocus, feedTitleFocus) = remember { FocusRequester.createRefs() }
   val focusManager = LocalFocusManager.current
+  var selectedFeedType by rememberSaveable { mutableStateOf(FeedType.RSS) }
+  var feedInput by remember { mutableStateOf(TextFieldValue()) }
 
   LaunchedEffect(Unit) {
-    feedLinkFocus.requestFocus()
+    feedInputFocus.requestFocus()
 
     presenter.effects.collectLatest { effect ->
       when (effect) {
@@ -118,7 +132,6 @@ fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
     }
   }
 
-  var feedLink by remember { mutableStateOf(TextFieldValue()) }
   var feedTitle by remember { mutableStateOf(TextFieldValue()) }
 
   Scaffold(
@@ -170,10 +183,14 @@ fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
             .padding(horizontal = 24.dp)
             .windowInsetsPadding(WindowInsets.navigationBars),
         enabled =
-          feedLink.text.isNotBlank() && state.feedFetchingState != FeedFetchingState.Loading,
+          feedInput.text.isNotBlank() && state.feedFetchingState != FeedFetchingState.Loading,
         onClick = {
+          val processedFeedLink = when (selectedFeedType) {
+            FeedType.RSS -> feedInput.text
+            FeedType.NOSTR -> "nostr:${feedInput.text}"
+          }
           presenter.dispatch(
-            AddFeedEvent.AddFeedClicked(feedLink = feedLink.text, name = feedTitle.text)
+            AddFeedEvent.AddFeedClicked(feedLink = processedFeedLink, name = feedTitle.text)
           )
         }
       ) {
@@ -185,7 +202,10 @@ fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
           )
         } else {
           Text(
-            text = LocalStrings.current.buttonAddFeed,
+            text = when (selectedFeedType) {
+              FeedType.RSS -> LocalStrings.current.buttonAddFeed
+              FeedType.NOSTR -> LocalStrings.current.buttonAddFeed
+            },
             style = MaterialTheme.typography.labelLarge
           )
         }
@@ -202,36 +222,85 @@ fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
       ) {
         Spacer(Modifier.requiredHeight(16.dp))
 
-        TextField(
-          modifier =
-            Modifier.fillMaxWidth().focusRequester(feedLinkFocus).focusProperties {
-              next = feedTitleFocus
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          FilterChip(
+            selected = selectedFeedType == FeedType.RSS,
+            onClick = {
+              selectedFeedType = FeedType.RSS
+              feedInput = TextFieldValue()
             },
-          input = feedLink,
-          onValueChange = { feedLink = it },
-          hint = LocalStrings.current.feedEntryLinkHint,
-          keyboardOptions =
-            KeyboardOptions(
-              autoCorrectEnabled = false,
-              keyboardType = KeyboardType.Uri,
-              imeAction = ImeAction.Next
+            label = { Text(LocalStrings.current.rss) },
+            leadingIcon = {
+              Icon(
+                Icons.Default.RssFeed,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+              )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = AppTheme.colorScheme.tintedForeground,
+              selectedLabelColor = AppTheme.colorScheme.tintedBackground,
+              selectedLeadingIconColor = AppTheme.colorScheme.tintedBackground
             )
+          )
+
+          FilterChip(
+            selected = selectedFeedType == FeedType.NOSTR,
+            onClick = {
+              selectedFeedType = FeedType.NOSTR
+              feedInput = TextFieldValue()
+              feedInputFocus.requestFocus()
+            },
+            label = { Text(LocalStrings.current.nostr) },
+            leadingIcon = {
+              Icon(
+                imageVector = TwineIcons.Nostr,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+              )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = AppTheme.colorScheme.tintedForeground,
+              selectedLabelColor = AppTheme.colorScheme.tintedBackground,
+              selectedLeadingIconColor = AppTheme.colorScheme.tintedBackground
+            )
+          )
+        }
+
+        TextField(
+          modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(feedInputFocus)
+            .focusProperties { next = feedTitleFocus },
+          input = feedInput,
+          onValueChange = { feedInput = it },
+          hint = when (selectedFeedType) {
+            FeedType.RSS -> LocalStrings.current.feedEntryLinkHint
+            FeedType.NOSTR -> LocalStrings.current.nostrEntryHint
+          },
+          keyboardOptions = KeyboardOptions(
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Uri,
+            imeAction = ImeAction.Next
+          )
         )
 
         TextField(
-          modifier =
-            Modifier.fillMaxWidth().focusRequester(feedTitleFocus).focusProperties {
-              previous = feedLinkFocus
-            },
+          modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(feedTitleFocus)
+            .focusProperties { previous = feedInputFocus },
           input = feedTitle,
           onValueChange = { feedTitle = it },
           hint = LocalStrings.current.feedEntryTitleHint,
-          keyboardOptions =
-            KeyboardOptions(
-              autoCorrectEnabled = false,
-              keyboardType = KeyboardType.Text,
-              imeAction = ImeAction.Done
-            ),
+          keyboardOptions = KeyboardOptions(
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Done
+          ),
         )
 
         Column(

@@ -22,7 +22,7 @@ import com.arkivanov.essenty.instancekeeper.getOrCreate
 import com.arkivanov.essenty.lifecycle.doOnCreate
 import dev.sasikanth.rss.reader.core.model.local.PostsType
 import dev.sasikanth.rss.reader.data.repository.ObservableActiveSource
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import dev.sasikanth.rss.reader.utils.getLast24HourStart
@@ -55,20 +55,20 @@ internal typealias FeedPresenterFactory =
 
 @Inject
 class FeedPresenter(
-  dispatchersProvider: DispatchersProvider,
-  rssRepository: RssRepository,
-  settingsRepository: SettingsRepository,
-  private val observableActiveSource: ObservableActiveSource,
-  @Assisted feedId: String,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val dismiss: () -> Unit
+    dispatchersProvider: DispatchersProvider,
+    feedRepository: FeedRepository,
+    settingsRepository: SettingsRepository,
+    private val observableActiveSource: ObservableActiveSource,
+    @Assisted feedId: String,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val dismiss: () -> Unit
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         settingsRepository = settingsRepository,
         feedId = feedId,
         observableActiveSource = observableActiveSource,
@@ -95,11 +95,11 @@ class FeedPresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
-    private val settingsRepository: SettingsRepository,
-    private val feedId: String,
-    private val observableActiveSource: ObservableActiveSource,
+      private val dispatchersProvider: DispatchersProvider,
+      private val feedRepository: FeedRepository,
+      private val settingsRepository: SettingsRepository,
+      private val feedId: String,
+      private val observableActiveSource: ObservableActiveSource,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -144,21 +144,21 @@ class FeedPresenter(
             }
           }
 
-        rssRepository.markPostsInFeedAsRead(feedIds = listOf(feedId), postsAfter = postsAfter)
+        feedRepository.markPostsInFeedAsRead(feedIds = listOf(feedId), postsAfter = postsAfter)
       }
     }
 
     private fun onAlwaysFetchSourceArticleChanged(newValue: Boolean, feedId: String) {
-      coroutineScope.launch { rssRepository.updateFeedAlwaysFetchSource(feedId, newValue) }
+      coroutineScope.launch { feedRepository.updateFeedAlwaysFetchSource(feedId, newValue) }
     }
 
     private fun onFeedNameUpdated(newFeedName: String, feedId: String) {
-      coroutineScope.launch { rssRepository.updateFeedName(newFeedName, feedId) }
+      coroutineScope.launch { feedRepository.updateFeedName(newFeedName, feedId) }
     }
 
     private fun removeFeed() {
       coroutineScope.launch {
-        rssRepository.removeFeed(feedId)
+        feedRepository.removeFeed(feedId)
         observableActiveSource.clearSelection()
         effects.emit(FeedEffect.DismissSheet)
       }
@@ -179,7 +179,7 @@ class FeedPresenter(
             }
           }
 
-        rssRepository
+        feedRepository
           .feed(feedId, postsAfter)
           .onEach { feed -> _state.update { it.copy(feed = feed) } }
           .catch {

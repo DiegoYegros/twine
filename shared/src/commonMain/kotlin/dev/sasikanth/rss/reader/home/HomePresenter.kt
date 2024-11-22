@@ -35,7 +35,7 @@ import dev.sasikanth.rss.reader.core.model.local.PostWithMetadata
 import dev.sasikanth.rss.reader.core.model.local.PostsType
 import dev.sasikanth.rss.reader.core.model.local.Source
 import dev.sasikanth.rss.reader.data.repository.ObservableActiveSource
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.feeds.FeedsEvent
 import dev.sasikanth.rss.reader.feeds.FeedsPresenter
@@ -73,8 +73,8 @@ internal typealias HomePresenterFactory =
 @Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomePresenter(
-  dispatchersProvider: DispatchersProvider,
-  feedsPresenterFactory:
+    dispatchersProvider: DispatchersProvider,
+    feedsPresenterFactory:
     (
       ComponentContext,
       openGroupSelectionSheet: () -> Unit,
@@ -82,19 +82,19 @@ class HomePresenter(
       openAddFeedScreen: () -> Unit,
       openGroupScreen: (groupId: String) -> Unit,
     ) -> FeedsPresenter,
-  private val rssRepository: RssRepository,
-  private val observableActiveSource: ObservableActiveSource,
-  private val settingsRepository: SettingsRepository,
-  private val seedColorExtractor: SeedColorExtractor,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val openSearch: () -> Unit,
-  @Assisted private val openBookmarks: () -> Unit,
-  @Assisted private val openSettings: () -> Unit,
-  @Assisted private val openPost: (post: PostWithMetadata) -> Unit,
-  @Assisted private val openGroupSelectionSheet: () -> Unit,
-  @Assisted private val openFeedInfoSheet: (feedId: String) -> Unit,
-  @Assisted private val openAddFeedScreen: () -> Unit,
-  @Assisted private val openGroupScreen: (groupId: String) -> Unit,
+    private val feedRepository: FeedRepository,
+    private val observableActiveSource: ObservableActiveSource,
+    private val settingsRepository: SettingsRepository,
+    private val seedColorExtractor: SeedColorExtractor,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val openSearch: () -> Unit,
+    @Assisted private val openBookmarks: () -> Unit,
+    @Assisted private val openSettings: () -> Unit,
+    @Assisted private val openPost: (post: PostWithMetadata) -> Unit,
+    @Assisted private val openGroupSelectionSheet: () -> Unit,
+    @Assisted private val openFeedInfoSheet: (feedId: String) -> Unit,
+    @Assisted private val openAddFeedScreen: () -> Unit,
+    @Assisted private val openGroupScreen: (groupId: String) -> Unit,
 ) : ComponentContext by componentContext {
 
   internal val feedsPresenter =
@@ -122,7 +122,7 @@ class HomePresenter(
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         observableActiveSource = observableActiveSource,
         settingsRepository = settingsRepository,
         feedsPresenter = feedsPresenter,
@@ -156,12 +156,12 @@ class HomePresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
-    private val observableActiveSource: ObservableActiveSource,
-    private val settingsRepository: SettingsRepository,
-    private val feedsPresenter: FeedsPresenter,
-    private val seedColorExtractor: SeedColorExtractor,
+      private val dispatchersProvider: DispatchersProvider,
+      private val feedRepository: FeedRepository,
+      private val observableActiveSource: ObservableActiveSource,
+      private val settingsRepository: SettingsRepository,
+      private val feedsPresenter: FeedsPresenter,
+      private val seedColorExtractor: SeedColorExtractor,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -221,23 +221,23 @@ class HomePresenter(
 
         when (source) {
           is Feed -> {
-            rssRepository.markPostsInFeedAsRead(
+            feedRepository.markPostsInFeedAsRead(
               feedIds = listOf(source.id),
               postsAfter = postsAfter
             )
           }
           is FeedGroup -> {
-            rssRepository.markPostsInFeedAsRead(feedIds = source.feedIds, postsAfter = postsAfter)
+            feedRepository.markPostsInFeedAsRead(feedIds = source.feedIds, postsAfter = postsAfter)
           }
           null -> {
-            rssRepository.markPostsAsRead(postsAfter = postsAfter)
+            feedRepository.markPostsAsRead(postsAfter = postsAfter)
           }
         }
       }
     }
 
     private fun togglePostReadStatus(postId: String, postRead: Boolean) {
-      coroutineScope.launch { rssRepository.updatePostReadStatus(read = !postRead, id = postId) }
+      coroutineScope.launch { feedRepository.updatePostReadStatus(read = !postRead, id = postId) }
     }
 
     private fun onPostsTypeChanged(postsType: PostsType) {
@@ -246,14 +246,14 @@ class HomePresenter(
 
     private fun postSourceClicked(feedId: String) {
       coroutineScope.launch {
-        val feed = rssRepository.feedBlocking(feedId)
+        val feed = feedRepository.feedBlocking(feedId)
         observableActiveSource.changeActiveSource(feed)
       }
     }
 
     private fun onPostBookmarkClicked(post: PostWithMetadata) {
       coroutineScope.launch {
-        rssRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
+        feedRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
       }
     }
 
@@ -269,7 +269,7 @@ class HomePresenter(
 
       observePosts(activeSourceFlow, postsTypeFlow)
 
-      rssRepository
+      feedRepository
         .hasFeeds()
         .distinctUntilChanged()
         .onEach { hasFeeds -> _state.update { it.copy(hasFeeds = hasFeeds) } }
@@ -291,7 +291,7 @@ class HomePresenter(
               }
             }
 
-          rssRepository.hasUnreadPostsInSource(
+          feedRepository.hasUnreadPostsInSource(
             sourceId = activeSource?.id,
             postsAfter = postsAfter,
           )
@@ -349,7 +349,7 @@ class HomePresenter(
         .onEach { (activeSource, postsAfter, unreadOnly, featuredPosts) ->
           val posts =
             createPager(config = createPagingConfig(pageSize = 20, enablePlaceholders = true)) {
-                rssRepository.posts(
+                feedRepository.posts(
                   selectedFeedId = activeSource?.id,
                   featuredPostsIds = featuredPosts.map { it.postWithMetadata.id },
                   unreadOnly = unreadOnly,
@@ -382,7 +382,7 @@ class HomePresenter(
       unreadOnly: Boolean?,
       postsAfter: Instant
     ) =
-      rssRepository
+      feedRepository
         .featuredPosts(
           selectedFeedId = activeSource?.id,
           unreadOnly = unreadOnly,
@@ -421,9 +421,9 @@ class HomePresenter(
         _state.update { it.copy(loadingState = HomeLoadingState.Loading) }
         try {
           when (val selectedSource = _state.value.activeSource) {
-            is FeedGroup -> rssRepository.updateGroup(selectedSource.feedIds)
-            is Feed -> rssRepository.updateFeed(selectedSource.id)
-            else -> rssRepository.updateFeeds()
+            is FeedGroup -> feedRepository.updateGroup(selectedSource.feedIds)
+            is Feed -> feedRepository.updateFeed(selectedSource.id)
+            else -> feedRepository.updateFeeds()
           }
         } catch (e: Exception) {
           BugsnagKotlin.logMessage("RefreshContent")

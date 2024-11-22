@@ -20,7 +20,7 @@ import co.touchlab.crashkios.bugsnag.BugsnagKotlin
 import co.touchlab.kermit.Logger
 import co.touchlab.stately.concurrency.AtomicInt
 import dev.sasikanth.rss.reader.data.repository.FeedAddResult
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.di.scopes.AppScope
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import dev.sasikanth.rss.reader.utils.Constants.BACKUP_FILE_NAME
@@ -53,7 +53,7 @@ import me.tatarka.inject.annotations.Inject
 class OpmlManager(
   private val dispatchersProvider: DispatchersProvider,
   private val sourcesOpml: SourcesOpml,
-  private val rssRepository: RssRepository,
+  private val feedRepository: FeedRepository,
 ) {
 
   private val job = SupervisorJob() + dispatchersProvider.main
@@ -120,8 +120,8 @@ class OpmlManager(
 
         val opmlString =
           withContext(dispatchersProvider.io) {
-            val feeds = rssRepository.allFeedsBlocking()
-            val feedGroups = rssRepository.allFeedGroupsBlocking()
+            val feeds = feedRepository.allFeedsBlocking()
+            val feedGroups = feedRepository.allFeedGroupsBlocking()
             val opmlSources = mutableListOf<OpmlSource>()
 
             val feedsById = feeds.associateBy { it.id }
@@ -189,9 +189,9 @@ class OpmlManager(
       // Since groups can contain multiple feeds, we don't want to add them in parallel
       groups.forEach { group ->
         val feedIds = addFeeds(group.feeds, processedFeedsCount, totalSourcesCount)
-        val groupId = rssRepository.createGroup(group.title)
+        val groupId = feedRepository.createGroup(group.title)
 
-        rssRepository.addFeedIdsToGroups(groupIds = setOf(groupId), feedIds = feedIds)
+        feedRepository.addFeedIdsToGroups(groupIds = setOf(groupId), feedIds = feedIds)
       }
     }
   }
@@ -229,7 +229,7 @@ class OpmlManager(
   }
 
   private suspend fun addFeed(feed: OpmlFeed): String? {
-    val result = rssRepository.addFeed(feedLink = feed.link, title = feed.title)
+    val result = feedRepository.addFeed(feedLink = feed.link, title = feed.title)
     if (result !is FeedAddResult.Success) {
       Logger.e("OPMLImport") { "Failed to import: ${feed.link}" }
       return null

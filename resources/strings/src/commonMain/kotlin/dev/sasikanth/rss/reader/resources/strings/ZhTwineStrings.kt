@@ -156,4 +156,7 @@ val ZhTwineStrings =
     databaseMaintainenceTitle = "请稍候...",
     databaseMaintainenceSubtitle = "正在进行数据库维护，请勿关闭应用",
     cdLoadFullArticle = "Load full article",
+    rss = "RSS",
+    nostr = "Nostr",
+    nostrEntryHint = "Enter npub, nprofile or NIP-05 identifier",
   )

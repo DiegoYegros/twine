@@ -27,7 +27,7 @@ import dev.sasikanth.rss.reader.core.model.local.PostWithMetadata
 import dev.sasikanth.rss.reader.core.model.local.SearchSortOrder
 import dev.sasikanth.rss.reader.core.model.local.Source
 import dev.sasikanth.rss.reader.core.network.fetcher.FeedFetchResult
-import dev.sasikanth.rss.reader.core.network.fetcher.FeedFetcher
+import dev.sasikanth.rss.reader.core.network.fetcher.FeedFetcherFactory
 import dev.sasikanth.rss.reader.data.database.BookmarkQueries
 import dev.sasikanth.rss.reader.data.database.FeedGroupQueries
 import dev.sasikanth.rss.reader.data.database.FeedQueries
@@ -50,8 +50,8 @@ import me.tatarka.inject.annotations.Inject
 
 @Inject
 @AppScope
-class RssRepository(
-  private val feedFetcher: FeedFetcher,
+class FeedRepository(
+  private val feedFetcherFactory: FeedFetcherFactory,
   private val transactionRunner: TransactionRunner,
   private val feedQueries: FeedQueries,
   private val postQueries: PostQueries,
@@ -77,7 +77,8 @@ class RssRepository(
     transformUrl: Boolean = true,
   ): FeedAddResult {
     return withContext(ioDispatcher) {
-      when (val feedFetchResult = feedFetcher.fetch(url = feedLink, transformUrl = transformUrl)) {
+      val fetcher = feedFetcherFactory.getFetcher(feedLink)
+      when (val feedFetchResult = fetcher.fetch(url = feedLink, transformUrl = transformUrl)) {
         is FeedFetchResult.Success -> {
           return@withContext try {
             val feedPayload = feedFetchResult.feedPayload

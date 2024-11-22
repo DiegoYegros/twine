@@ -22,7 +22,7 @@ import dev.sasikanth.rss.reader.app.AppInfo
 import dev.sasikanth.rss.reader.data.repository.AppThemeMode
 import dev.sasikanth.rss.reader.data.repository.BrowserType
 import dev.sasikanth.rss.reader.data.repository.Period
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.opml.OpmlManager
 import dev.sasikanth.rss.reader.util.DispatchersProvider
@@ -50,14 +50,14 @@ internal typealias SettingsPresenterFactory =
 
 @Inject
 class SettingsPresenter(
-  dispatchersProvider: DispatchersProvider,
-  private val settingsRepository: SettingsRepository,
-  private val rssRepository: RssRepository,
-  private val appInfo: AppInfo,
-  private val opmlManager: OpmlManager,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val goBack: () -> Unit,
-  @Assisted private val openAbout: () -> Unit,
+    dispatchersProvider: DispatchersProvider,
+    private val settingsRepository: SettingsRepository,
+    private val feedRepository: FeedRepository,
+    private val appInfo: AppInfo,
+    private val opmlManager: OpmlManager,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val goBack: () -> Unit,
+    @Assisted private val openAbout: () -> Unit,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
@@ -66,7 +66,7 @@ class SettingsPresenter(
         dispatchersProvider = dispatchersProvider,
         appInfo = appInfo,
         settingsRepository = settingsRepository,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         opmlManager = opmlManager,
       )
     }
@@ -86,11 +86,11 @@ class SettingsPresenter(
   }
 
   private class PresenterInstance(
-    dispatchersProvider: DispatchersProvider,
-    appInfo: AppInfo,
-    rssRepository: RssRepository,
-    private val settingsRepository: SettingsRepository,
-    private val opmlManager: OpmlManager,
+      dispatchersProvider: DispatchersProvider,
+      appInfo: AppInfo,
+      feedRepository: FeedRepository,
+      private val settingsRepository: SettingsRepository,
+      private val opmlManager: OpmlManager,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -110,7 +110,7 @@ class SettingsPresenter(
           settingsRepository.postsDeletionPeriod,
           settingsRepository.showReaderView,
           settingsRepository.appThemeMode,
-          rssRepository.hasFeeds()
+          feedRepository.hasFeeds()
         ) {
           browserType,
           showUnreadPostsCount,

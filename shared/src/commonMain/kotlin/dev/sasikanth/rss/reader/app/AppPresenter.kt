@@ -38,7 +38,7 @@ import dev.sasikanth.rss.reader.addfeed.AddFeedEvent
 import dev.sasikanth.rss.reader.addfeed.AddFeedPresenterFactory
 import dev.sasikanth.rss.reader.bookmarks.BookmarksPresenterFactory
 import dev.sasikanth.rss.reader.core.model.local.PostWithMetadata
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.data.repository.SettingsRepository
 import dev.sasikanth.rss.reader.di.scopes.ActivityScope
 import dev.sasikanth.rss.reader.feed.FeedPresenterFactory
@@ -73,22 +73,22 @@ import me.tatarka.inject.annotations.Inject
 @Inject
 @ActivityScope
 class AppPresenter(
-  componentContext: ComponentContext,
-  private val dispatchersProvider: DispatchersProvider,
-  private val homePresenter: HomePresenterFactory,
-  private val searchPresenter: SearchPresentFactory,
-  private val bookmarksPresenter: BookmarksPresenterFactory,
-  private val settingsPresenter: SettingsPresenterFactory,
-  private val aboutPresenter: AboutPresenterFactory,
-  private val readerPresenter: ReaderPresenterFactory,
-  private val feedPresenter: FeedPresenterFactory,
-  private val groupSelectionPresenter: GroupSelectionPresenterFactory,
-  private val addFeedPresenter: AddFeedPresenterFactory,
-  private val groupPresenter: GroupPresenterFactory,
-  private val lastUpdatedAt: LastUpdatedAt,
-  private val rssRepository: RssRepository,
-  private val settingsRepository: SettingsRepository,
-  private val linkHandler: LinkHandler,
+    componentContext: ComponentContext,
+    private val dispatchersProvider: DispatchersProvider,
+    private val homePresenter: HomePresenterFactory,
+    private val searchPresenter: SearchPresentFactory,
+    private val bookmarksPresenter: BookmarksPresenterFactory,
+    private val settingsPresenter: SettingsPresenterFactory,
+    private val aboutPresenter: AboutPresenterFactory,
+    private val readerPresenter: ReaderPresenterFactory,
+    private val feedPresenter: FeedPresenterFactory,
+    private val groupSelectionPresenter: GroupSelectionPresenterFactory,
+    private val addFeedPresenter: AddFeedPresenterFactory,
+    private val groupPresenter: GroupPresenterFactory,
+    private val lastUpdatedAt: LastUpdatedAt,
+    private val feedRepository: FeedRepository,
+    private val settingsRepository: SettingsRepository,
+    private val linkHandler: LinkHandler,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
@@ -96,7 +96,7 @@ class AppPresenter(
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
         lastUpdatedAt = lastUpdatedAt,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         settingsRepository = settingsRepository,
       )
     }
@@ -131,7 +131,7 @@ class AppPresenter(
     // Loading feed count to make sure all database maintainence operations
     // are finished and we can navigate to next screen
     scope.launch {
-      withContext(dispatchersProvider.io) { rssRepository.numberOfFeeds().firstOrNull() }
+      withContext(dispatchersProvider.io) { feedRepository.numberOfFeeds().firstOrNull() }
       navigation.replaceAll(Config.Home)
     }
   }
@@ -264,16 +264,16 @@ class AppPresenter(
         navigation.pushNew(Config.Reader(post.id))
       } else {
         linkHandler.openLink(post.link)
-        rssRepository.updatePostReadStatus(read = true, id = post.id)
+        feedRepository.updatePostReadStatus(read = true, id = post.id)
       }
     }
   }
 
   private class PresenterInstance(
-    dispatchersProvider: DispatchersProvider,
-    private val lastUpdatedAt: LastUpdatedAt,
-    private val rssRepository: RssRepository,
-    private val settingsRepository: SettingsRepository,
+      dispatchersProvider: DispatchersProvider,
+      private val lastUpdatedAt: LastUpdatedAt,
+      private val feedRepository: FeedRepository,
+      private val settingsRepository: SettingsRepository,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -294,7 +294,7 @@ class AppPresenter(
     fun refreshFeedsIfExpired() {
       coroutineScope.launch {
         if (lastUpdatedAt.hasExpired()) {
-          rssRepository.updateFeeds()
+          feedRepository.updateFeeds()
           lastUpdatedAt.refresh()
         }
       }

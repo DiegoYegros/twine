@@ -165,4 +165,7 @@ val TrTwineStrings =
     databaseMaintainenceTitle = "Lütfen bekleyin...",
     databaseMaintainenceSubtitle = "Veritabanı bakımı gerçekleştiriliyor, uygulamayı kapatmayın",
     cdLoadFullArticle = "Load full article",
+    rss = "RSS",
+    nostr = "Nostr",
+    nostrEntryHint = "Enter npub, nprofile or NIP-05 identifier",
   )

@@ -38,13 +38,13 @@ import korlibs.io.lang.Charsets
 import me.tatarka.inject.annotations.Inject
 
 @Inject
-class FeedFetcher(private val httpClient: HttpClient, private val feedParser: FeedParser) {
+class RssFeedFetcher(private val httpClient: HttpClient, private val feedParser: FeedParser) : IFeedFetcher{
 
   companion object {
     private const val MAX_REDIRECTS_ALLOWED = 5
   }
 
-  suspend fun fetch(url: String, transformUrl: Boolean = true): FeedFetchResult {
+  override suspend fun fetch(url: String, transformUrl: Boolean): FeedFetchResult {
     return fetch(url, transformUrl, redirectCount = 0)
   }
 

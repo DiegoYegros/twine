@@ -22,7 +22,7 @@ import com.arkivanov.essenty.instancekeeper.getOrCreate
 import com.arkivanov.essenty.lifecycle.doOnCreate
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import dev.sasikanth.rss.reader.core.network.post.FullArticleFetcher
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.reader.ReaderState.PostMode.Idle
 import dev.sasikanth.rss.reader.reader.ReaderState.PostMode.InProgress
 import dev.sasikanth.rss.reader.reader.ReaderState.PostMode.RssContent
@@ -49,19 +49,19 @@ internal typealias ReaderPresenterFactory =
 
 @Inject
 class ReaderPresenter(
-  dispatchersProvider: DispatchersProvider,
-  private val rssRepository: RssRepository,
-  private val fullArticleFetcher: FullArticleFetcher,
-  @Assisted private val postId: String,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val goBack: () -> Unit
+    dispatchersProvider: DispatchersProvider,
+    private val feedRepository: FeedRepository,
+    private val fullArticleFetcher: FullArticleFetcher,
+    @Assisted private val postId: String,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val goBack: () -> Unit
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
         postId = postId,
         fullArticleFetcher = fullArticleFetcher
       )
@@ -86,10 +86,10 @@ class ReaderPresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
-    private val postId: String,
-    private val fullArticleFetcher: FullArticleFetcher,
+      private val dispatchersProvider: DispatchersProvider,
+      private val feedRepository: FeedRepository,
+      private val postId: String,
+      private val fullArticleFetcher: FullArticleFetcher,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -115,21 +115,21 @@ class ReaderPresenter(
     }
 
     private fun markPostAsRead(postId: String) {
-      coroutineScope.launch { rssRepository.updatePostReadStatus(read = true, id = postId) }
+      coroutineScope.launch { feedRepository.updatePostReadStatus(read = true, id = postId) }
     }
 
     private fun togglePostBookmark(postId: String) {
       coroutineScope.launch {
         val isBookmarked = state.value.isBookmarked ?: false
-        rssRepository.updateBookmarkStatus(bookmarked = !isBookmarked, id = postId)
+        feedRepository.updateBookmarkStatus(bookmarked = !isBookmarked, id = postId)
         _state.update { it.copy(isBookmarked = !isBookmarked) }
       }
     }
 
     private fun init(postId: String) {
       coroutineScope.launch {
-        val post = rssRepository.post(postId)
-        val feed = rssRepository.feedBlocking(post.sourceId)
+        val post = feedRepository.post(postId)
+        val feed = feedRepository.feedBlocking(post.sourceId)
 
         _state.update {
           it.copy(
@@ -166,7 +166,7 @@ class ReaderPresenter(
 
     private suspend fun loadRssContent() {
       _state.update { it.copy(postMode = InProgress) }
-      val post = rssRepository.post(postId)
+      val post = feedRepository.post(postId)
       val postContent = post.rawContent ?: post.description
       _state.update { it.copy(content = postContent, postMode = RssContent) }
     }

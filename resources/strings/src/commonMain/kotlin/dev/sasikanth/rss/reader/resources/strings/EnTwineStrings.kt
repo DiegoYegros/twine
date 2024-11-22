@@ -176,4 +176,7 @@ val EnTwineStrings =
     databaseMaintainenceTitle = "Please wait...",
     databaseMaintainenceSubtitle = "Performing database maintainence, don't close the app",
     cdLoadFullArticle = "Load full article",
+    rss = "RSS",
+    nostr = "Nostr",
+    nostrEntryHint = "Enter npub, nprofile or NIP-05 identifier"
   )

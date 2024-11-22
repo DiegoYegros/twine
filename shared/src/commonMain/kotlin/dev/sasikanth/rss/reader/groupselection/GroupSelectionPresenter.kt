@@ -23,7 +23,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.instancekeeper.InstanceKeeper
 import com.arkivanov.essenty.instancekeeper.getOrCreate
 import dev.sasikanth.rss.reader.core.model.local.FeedGroup
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.groupselection.GroupSelectionEvent.BackClicked
 import dev.sasikanth.rss.reader.groupselection.GroupSelectionEvent.OnConfirmGroupSelectionClicked
 import dev.sasikanth.rss.reader.groupselection.GroupSelectionEvent.OnCreateGroup
@@ -50,16 +50,16 @@ internal typealias GroupSelectionPresenterFactory =
 
 @Inject
 class GroupSelectionPresenter(
-  dispatchersProvider: DispatchersProvider,
-  rssRepository: RssRepository,
-  @Assisted private val componentContext: ComponentContext,
-  @Assisted private val onGroupsSelected: (groupIds: Set<String>) -> Unit,
-  @Assisted private val dismiss: () -> Unit,
+    dispatchersProvider: DispatchersProvider,
+    feedRepository: FeedRepository,
+    @Assisted private val componentContext: ComponentContext,
+    @Assisted private val onGroupsSelected: (groupIds: Set<String>) -> Unit,
+    @Assisted private val dismiss: () -> Unit,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
-      PresenterInstance(dispatchersProvider = dispatchersProvider, rssRepository = rssRepository)
+      PresenterInstance(dispatchersProvider = dispatchersProvider, feedRepository = feedRepository)
     }
 
   internal val state: StateFlow<GroupSelectionState> = presenterInstance.state
@@ -79,8 +79,8 @@ class GroupSelectionPresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
+      private val dispatchersProvider: DispatchersProvider,
+      private val feedRepository: FeedRepository,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -99,7 +99,7 @@ class GroupSelectionPresenter(
 
     private fun observeGroups() {
       val groups =
-        createPager(config = createPagingConfig(pageSize = 20)) { rssRepository.allGroups() }
+        createPager(config = createPagingConfig(pageSize = 20)) { feedRepository.allGroups() }
           .flow
           .cachedIn(coroutineScope)
 
@@ -120,7 +120,7 @@ class GroupSelectionPresenter(
     }
 
     private fun onCreateGroup(name: String) {
-      coroutineScope.launch { rssRepository.createGroup(name) }
+      coroutineScope.launch { feedRepository.createGroup(name) }
     }
 
     private fun onToggleGroupSelection(feedGroup: FeedGroup) {

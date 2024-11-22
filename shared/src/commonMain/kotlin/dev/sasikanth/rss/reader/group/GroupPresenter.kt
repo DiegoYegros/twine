@@ -28,7 +28,7 @@ import com.arkivanov.essenty.instancekeeper.InstanceKeeper
 import com.arkivanov.essenty.instancekeeper.getOrCreate
 import dev.sasikanth.rss.reader.core.model.local.Feed
 import dev.sasikanth.rss.reader.data.repository.FeedsOrderBy
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -53,12 +53,12 @@ internal typealias GroupPresenterFactory =
 
 @Inject
 class GroupPresenter(
-  dispatchersProvider: DispatchersProvider,
-  rssRepository: RssRepository,
-  @Assisted groupId: String,
-  @Assisted componentContext: ComponentContext,
-  @Assisted private val goBack: () -> Unit,
-  @Assisted private val openGroupSelection: () -> Unit,
+    dispatchersProvider: DispatchersProvider,
+    feedRepository: FeedRepository,
+    @Assisted groupId: String,
+    @Assisted componentContext: ComponentContext,
+    @Assisted private val goBack: () -> Unit,
+    @Assisted private val openGroupSelection: () -> Unit,
 ) : ComponentContext by componentContext {
 
   private val presenterInstance =
@@ -66,7 +66,7 @@ class GroupPresenter(
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
         groupId = groupId,
-        rssRepository = rssRepository
+        feedRepository = feedRepository
       )
     }
   internal val state = presenterInstance.state
@@ -86,9 +86,9 @@ class GroupPresenter(
   }
 
   private class PresenterInstance(
-    private val dispatchersProvider: DispatchersProvider,
-    private val groupId: String,
-    private val rssRepository: RssRepository,
+      private val dispatchersProvider: DispatchersProvider,
+      private val groupId: String,
+      private val feedRepository: FeedRepository,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -127,7 +127,7 @@ class GroupPresenter(
     }
 
     private fun init() {
-      rssRepository
+      feedRepository
         .groupById(groupId)
         .onEach { group ->
           groupName = groupName.copy(text = group.name)
@@ -141,7 +141,7 @@ class GroupPresenter(
         .onEach { (group, state) ->
           val feeds =
             createPager(config = createPagingConfig(pageSize = 20)) {
-                rssRepository.feedsInGroup(feedIds = group.feedIds, orderBy = state.feedsOrderBy)
+                feedRepository.feedsInGroup(feedIds = group.feedIds, orderBy = state.feedsOrderBy)
               }
               .flow
               .cachedIn(coroutineScope)
@@ -174,7 +174,7 @@ class GroupPresenter(
 
     private fun onUngroupClicked() {
       coroutineScope.launch {
-        rssRepository.removeFeedIdsFromGroups(
+        feedRepository.removeFeedIdsFromGroups(
           groupIds = setOf(groupId),
           feedIds = _state.value.selectedSources.map { it.id }
         )
@@ -185,12 +185,12 @@ class GroupPresenter(
 
     private fun onGroupsSelected(groupIds: Set<String>) {
       coroutineScope.launch {
-        rssRepository.removeFeedIdsFromGroups(
+        feedRepository.removeFeedIdsFromGroups(
           groupIds = setOf(groupId),
           feedIds = _state.value.selectedSources.map { it.id }
         )
 
-        rssRepository.addFeedIdsToGroups(
+        feedRepository.addFeedIdsToGroups(
           groupIds = groupIds,
           feedIds = _state.value.selectedSources.map { it.id }
         )
@@ -200,7 +200,7 @@ class GroupPresenter(
     }
 
     private fun onGroupNameChanged(name: String) {
-      coroutineScope.launch { rssRepository.updateGroupName(groupId = groupId, name = name) }
+      coroutineScope.launch { feedRepository.updateGroupName(groupId = groupId, name = name) }
     }
 
     override fun onDestroy() {

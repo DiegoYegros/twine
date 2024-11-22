@@ -22,7 +22,7 @@ import com.arkivanov.essenty.instancekeeper.InstanceKeeper
 import com.arkivanov.essenty.instancekeeper.getOrCreate
 import dev.sasikanth.rss.reader.core.model.local.FeedGroup
 import dev.sasikanth.rss.reader.data.repository.FeedAddResult
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.exceptions.XmlParsingError
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -48,7 +48,7 @@ internal typealias AddFeedPresenterFactory =
 @Inject
 class AddFeedPresenter(
   dispatchersProvider: DispatchersProvider,
-  rssRepository: RssRepository,
+  feedRepository: FeedRepository,
   @Assisted componentContext: ComponentContext,
   @Assisted private val goBack: () -> Unit,
   @Assisted private val openGroupSelection: () -> Unit,
@@ -58,7 +58,7 @@ class AddFeedPresenter(
     instanceKeeper.getOrCreate {
       PresenterInstance(
         dispatchersProvider = dispatchersProvider,
-        rssRepository = rssRepository,
+        feedRepository = feedRepository,
       )
     }
 
@@ -79,7 +79,7 @@ class AddFeedPresenter(
 
   private class PresenterInstance(
     dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository,
+    private val feedRepository: FeedRepository,
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -122,7 +122,7 @@ class AddFeedPresenter(
 
     private fun onGroupsSelected(selectedGroupIds: Set<String>) {
       coroutineScope.launch {
-        val feedGroups = rssRepository.groupByIds(selectedGroupIds)
+        val feedGroups = feedRepository.groupByIds(selectedGroupIds)
         _state.update {
           it.copy(selectedFeedGroups = _state.value.selectedFeedGroups + feedGroups.toSet())
         }
@@ -139,7 +139,7 @@ class AddFeedPresenter(
       coroutineScope.launch {
         _state.update { it.copy(feedFetchingState = FeedFetchingState.Loading) }
         try {
-          when (val feedAddResult = rssRepository.addFeed(feedLink, title)) {
+          when (val feedAddResult = feedRepository.addFeed(feedLink, title)) {
             is FeedAddResult.DatabaseError -> handleDatabaseErrors(feedAddResult, feedLink)
             is FeedAddResult.HttpStatusError -> handleHttpStatusErrors(feedAddResult)
             is FeedAddResult.NetworkError -> handleNetworkErrors(feedAddResult, feedLink)
@@ -147,7 +147,7 @@ class AddFeedPresenter(
               effects.emit(AddFeedEffect.ShowError(AddFeedErrorType.TooManyRedirects))
             }
             is FeedAddResult.Success -> {
-              rssRepository.addFeedIdsToGroups(
+              feedRepository.addFeedIdsToGroups(
                 groupIds = groups.map { it.id }.toSet(),
                 feedIds = listOf(feedAddResult.feedId)
               )

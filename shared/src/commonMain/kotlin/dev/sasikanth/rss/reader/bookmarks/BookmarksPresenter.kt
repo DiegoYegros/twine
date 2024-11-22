@@ -23,7 +23,7 @@ import com.arkivanov.essenty.instancekeeper.InstanceKeeper
 import com.arkivanov.essenty.instancekeeper.getOrCreate
 import com.arkivanov.essenty.lifecycle.doOnCreate
 import dev.sasikanth.rss.reader.core.model.local.PostWithMetadata
-import dev.sasikanth.rss.reader.data.repository.RssRepository
+import dev.sasikanth.rss.reader.data.repository.FeedRepository
 import dev.sasikanth.rss.reader.util.DispatchersProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -49,7 +49,7 @@ internal typealias BookmarksPresenterFactory =
 @Inject
 class BookmarksPresenter(
   dispatchersProvider: DispatchersProvider,
-  private val rssRepository: RssRepository,
+  private val feedRepository: FeedRepository,
   @Assisted componentContext: ComponentContext,
   @Assisted private val goBack: () -> Unit,
   @Assisted private val openReaderView: (post: PostWithMetadata) -> Unit,
@@ -57,7 +57,7 @@ class BookmarksPresenter(
 
   private val presenterInstance =
     instanceKeeper.getOrCreate {
-      PresenterInstance(dispatchersProvider = dispatchersProvider, rssRepository = rssRepository)
+      PresenterInstance(dispatchersProvider = dispatchersProvider, feedRepository = feedRepository)
     }
 
   init {
@@ -86,7 +86,7 @@ class BookmarksPresenter(
 
   private class PresenterInstance(
     dispatchersProvider: DispatchersProvider,
-    private val rssRepository: RssRepository
+    private val feedRepository: FeedRepository
   ) : InstanceKeeper.Instance {
 
     private val coroutineScope = CoroutineScope(SupervisorJob() + dispatchersProvider.main)
@@ -115,7 +115,7 @@ class BookmarksPresenter(
     }
 
     private fun togglePostReadStatus(postId: String, postRead: Boolean) {
-      coroutineScope.launch { rssRepository.updatePostReadStatus(read = !postRead, id = postId) }
+      coroutineScope.launch { feedRepository.updatePostReadStatus(read = !postRead, id = postId) }
     }
 
     fun onPostClicked(
@@ -124,8 +124,8 @@ class BookmarksPresenter(
       openLink: (postLink: String) -> Unit
     ) {
       coroutineScope.launch {
-        val hasPost = rssRepository.hasPost(post.id)
-        val hasFeed = rssRepository.hasFeed(post.sourceId)
+        val hasPost = feedRepository.hasPost(post.id)
+        val hasFeed = feedRepository.hasFeed(post.sourceId)
 
         if (hasPost && hasFeed) {
           openReaderView(post)
@@ -137,17 +137,17 @@ class BookmarksPresenter(
 
     private fun onPostBookmarkClicked(post: PostWithMetadata) {
       coroutineScope.launch {
-        if (rssRepository.hasFeed(post.sourceId)) {
-          rssRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
+        if (feedRepository.hasFeed(post.sourceId)) {
+          feedRepository.updateBookmarkStatus(bookmarked = !post.bookmarked, id = post.id)
         } else {
-          rssRepository.deleteBookmark(id = post.id)
+          feedRepository.deleteBookmark(id = post.id)
         }
       }
     }
 
     private fun init() {
       val bookmarks =
-        createPager(config = createPagingConfig(pageSize = 20)) { rssRepository.bookmarks() }
+        createPager(config = createPagingConfig(pageSize = 20)) { feedRepository.bookmarks() }
           .flow
           .cachedIn(coroutineScope)
 
