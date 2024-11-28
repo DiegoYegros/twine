@@ -43,6 +43,9 @@ kotlin {
       implementation(libs.ktxml)
       implementation(libs.kermit)
       implementation(libs.crashkios.bugsnag)
+      implementation(libs.kotlinx.datetime)
+      implementation(libs.kotlinx.serialization.json)
+      implementation(libs.ktor.websockets)
       api(libs.korlibs.string)
     }
     commonTest.dependencies { implementation(libs.kotlin.test) }
