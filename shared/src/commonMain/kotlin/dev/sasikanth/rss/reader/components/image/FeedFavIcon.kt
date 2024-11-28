@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import co.touchlab.kermit.Logger
 import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
@@ -45,7 +46,8 @@ internal fun FeedFavIcon(
     val context = LocalPlatformContext.current
     val imageRequest = ImageRequest.Builder(context).data(url).diskCacheKey(url).size(size).build()
     val imageLoader = FavIconImageLoader.get(context)
-
+    Logger.i("Im asking for this: $imageRequest")
+    Logger.i("With this URL: $url")
     SubcomposeAsyncImage(
       model = imageRequest,
       contentDescription = contentDescription,

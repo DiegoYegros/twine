@@ -18,6 +18,7 @@
 
 package dev.sasikanth.rss.reader.favicons
 
+import co.touchlab.kermit.Logger
 import coil3.Extras
 import coil3.ImageLoader
 import coil3.Uri
@@ -98,12 +99,17 @@ class FavIconFetcher(
             baseUri = url,
             charsetName = null
           )
-        val favIconUrl = parseFaviconUrl(document) ?: fallbackFaviconUrl(url)
-
+        var favIconUrl: String = ""
+        if (isDirectImageUrl(url)) {
+          networkFetcher(url).fetch()
+        } else {
+          favIconUrl = parseFaviconUrl(document) ?: fallbackFaviconUrl(url)
+        }
         return@executeNetworkRequest networkFetcher(favIconUrl).fetch()
       }
     } catch (e: Exception) {
       snapshot?.closeQuietly()
+      Logger.i("THIS IS WHAT HAPPENS: ", e)
       throw e
     }
   }
@@ -116,7 +122,10 @@ class FavIconFetcher(
 
     return faviconUrl
   }
-
+  private fun isDirectImageUrl(url: String): Boolean {
+    val imageExtensions = listOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg")
+    return imageExtensions.any { url.lowercase().endsWith(it) }
+  }
   private fun fallbackFaviconUrl(url: String): String {
     // Setting size as 180px, since that's the most commonly used apple touch icon size in the HTML,
     // if a icon is not found, it will fallback to default fav icon

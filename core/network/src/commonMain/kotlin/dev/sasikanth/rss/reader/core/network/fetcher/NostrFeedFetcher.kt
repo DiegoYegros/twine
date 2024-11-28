@@ -67,7 +67,7 @@ class NostrFeedFetcher(
             name = nostrProfile.displayName,
             description = "Long-form content from Nostr author".decodeHTMLString(),
             icon = nostrProfile.picture.toString(),
-            homepageLink = "njump.me/$pubkey",
+            homepageLink = nostrProfile.picture.toString(),
             link = "njump.me/$pubkey",
             posts = events.map { event -> convertNostrEventToPost(event) }
         )
