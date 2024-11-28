@@ -5,6 +5,7 @@ import dev.sasikanth.rss.reader.core.model.remote.FeedPayload
 import dev.sasikanth.rss.reader.core.model.remote.PostPayload
 import dev.sasikanth.rss.reader.core.network.nostr.NostrClient
 import dev.sasikanth.rss.reader.core.network.nostr.NostrEvent
+import dev.sasikanth.rss.reader.core.network.nostr.NostrProfile
 import dev.sasikanth.rss.reader.core.network.parser.FeedParser
 import dev.sasikanth.rss.reader.util.decodeHTMLString
 import io.ktor.client.HttpClient
@@ -13,8 +14,6 @@ import me.tatarka.inject.annotations.Inject
 
 @Inject
 class NostrFeedFetcher(
-    private val httpClient: HttpClient,
-    private val feedParser: FeedParser,
     private val nostrClient: NostrClient
 ) : IFeedFetcher {
 
@@ -32,7 +31,9 @@ class NostrFeedFetcher(
                 return FeedFetchResult.Error(Exception("No articles found"))
             }
 
-            val feed = convertNostrToFeed(events, url, pubkey)
+            val nostrProfile = nostrClient.fetchNostrProfile(pubkey)
+
+            val feed = convertNostrToFeed(events, pubkey, nostrProfile)
             FeedFetchResult.Success(feed)
         } catch (e: Exception) {
             Logger.e(throwable = e) { "Failed to fetch Nostr feed" }
@@ -59,20 +60,15 @@ class NostrFeedFetcher(
 
     private fun convertNostrToFeed(
         events: List<NostrEvent>,
-        feedUrl: String,
-        pubkey: String
+        pubkey: String,
+        nostrProfile: NostrProfile
     ): FeedPayload {
-        // Get author display info if available from first event
-        val authorInfo = events.firstOrNull()?.let { event ->
-            event.tags.find { it.getOrNull(0) == "p" }?.getOrNull(1)
-        } ?: pubkey.take(8)
-
         return FeedPayload(
-            name = "Nostr: $authorInfo".decodeHTMLString(),
+            name = nostrProfile.displayName,
             description = "Long-form content from Nostr author".decodeHTMLString(),
-            icon = FeedParser.feedIcon("nos.lol"), // Using nos.lol as default icon source
-            homepageLink = "nostr:$pubkey",
-            link = feedUrl,
+            icon = nostrProfile.picture.toString(),
+            homepageLink = "njump.me/$pubkey",
+            link = "njump.me/$pubkey",
             posts = events.map { event -> convertNostrEventToPost(event) }
         )
     }
@@ -97,11 +93,7 @@ class NostrFeedFetcher(
             rawContent = event.content,
             imageUrl = imageUrl,
             date = publishedAt,
-            commentsLink = null // Nostr doesn't have a direct comments concept yet
+            commentsLink = null
         )
-    }
-
-    companion object {
-        private const val PREVIEW_LENGTH = 500
     }
 }
