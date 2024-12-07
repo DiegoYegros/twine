@@ -124,6 +124,7 @@ kermit-bugsnag = { module = "co.touchlab:kermit-bugsnag", version.ref = "kermit"
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable"  }
 korlibs-string = { module = "com.soywiz:korlibs-string", version.ref = "korlibs" }
 filekit = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
+ktor_websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 
 [plugins]
 android_application = { id = "com.android.application", version.ref = "android_gradle_plugin" }

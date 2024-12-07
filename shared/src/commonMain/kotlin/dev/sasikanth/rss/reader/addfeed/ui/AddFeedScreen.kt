@@ -105,14 +105,13 @@ private enum class FeedType {
   NOSTR
 }
 
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddFeedScreen(presenter: AddFeedPresenter, modifier: Modifier = Modifier) {
   val state by presenter.state.collectAsState()
   val strings = LocalStrings.current
   val snackbarHostState = remember { SnackbarHostState() }
   val (feedInputFocus, feedTitleFocus) = remember { FocusRequester.createRefs() }
-  val focusManager = LocalFocusManager.current
   var selectedFeedType by rememberSaveable { mutableStateOf(FeedType.RSS) }
   var feedInput by remember { mutableStateOf(TextFieldValue()) }
 

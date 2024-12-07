@@ -80,8 +80,16 @@ android {
     debug { applicationIdSuffix = ".debug" }
   }
 
-  packaging { resources { excludes.add("/META-INF/{AL2.0,LGPL2.1}") } }
-
+  packaging {
+    resources {
+      excludes.addAll(
+        listOf(
+          "/META-INF/{AL2.0,LGPL2.1}",
+          "/META-INF/INDEX.LIST",
+        )
+      )
+    }
+  }
   buildFeatures { buildConfig = true }
 }
 
